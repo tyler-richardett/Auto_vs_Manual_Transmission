@@ -1,0 +1,116 @@
+---
+title: "Effects on MPG, Automatic vs. Manual Transmission"
+author: "Tyler Richardett"
+output: pdf_document
+---
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Executive Summary
+
+Using the ```mtcars``` data set, we answer the following two questions:
+
+1. Is an automatic or manual transmission better for MPG?
+2. Quantify the MPG difference between automatic and manual transmissions.
+
+A two-sided t-test concludes that manual transmission is better for MPG. And a multivariate linear regression concludes that manual transmission accounts for a roughly 3 MPG difference over automatic transmission.
+
+## Loading and Cleaning the Data
+
+First, load in the data from the {datasets} library.
+
+``` {r load.data, message = FALSE}
+library(datasets)
+data(mtcars)
+```
+
+Reclassify the "vs" and "am" variables as factors.
+
+```{r reclassify.factors}
+mtcars$vs <- factor(mtcars$vs, labels = c("V", "Straight"))
+mtcars$am <- factor(mtcars$am, labels = c("Automatic", "Manual"))
+```
+
+## Exploratory Data Analysis
+
+Use the ```summary``` function to get a glimpse of the clean data. In the interest of saving space, we'll just look at the "mpg" and "am" variables.
+
+``` {r summary.data}
+summary(mtcars[,c(1,9)])
+```
+
+See **Appendix A** for a boxplot that compares range of average MPG for vehicles with automatic and manual transmissions.
+
+## Comparing Automatic and Manual Transmissions
+
+Using the ```summarize``` function from the {dplyr} library, calculate the mean MPG for vehicles with automatic and manual transmissions.
+
+```{r calc.means, message = FALSE}
+library(dplyr)
+am.means <- mtcars %>%
+        group_by(am) %>%
+        summarize(mean = mean(mpg))
+```
+
+``` {r view.means, echo = FALSE, results = "asis", message = FALSE}
+library(pander)
+pandoc.table(am.means, justify = "left")
+```
+
+Because the sample size for each group is low (< 30), use a two-sample t-test to compare the two groups. The null hypothesis we are testing is that there is no difference in MPG between vehicles with automatic transmissions and those with manual transmissions.
+
+``` {r t.test}
+t.test(mpg~am, data = mtcars)
+```
+
+The p-value (0.001374) is less than 0.05, so we reject the null hypothesis. This answers our first question: **Manual transmission is better than automatic transmission for MPG**.
+
+## Quantifying the Difference Between Automatic and Manual Transmissions
+
+Use the ```step``` function to choose the best model.
+
+``` {r step.model, results = "hide"}
+step.model <- step(lm(mpg ~ ., data = mtcars))
+```
+
+``` {r summary.step.model, echo = FALSE, results = "as.is"}
+summary(step.model)
+```
+
+As you can see, the best fit model includes the "am" variable, which is fortunate for the purposes of this analysis, and it explains about 85 percent of the variance. See **Appendix B** for the residual plots, which show no clear pattern.
+
+This answers our second question: **Manual transmission improves MPG by 2.94 units, over automatic transmission**. The p-value (0.046716) is less than 0.05.
+
+## Appendices
+
+### Appendix A
+
+Use ```ggplot``` to create a boxplot of MPG by automatic vs. manual transmissions.
+
+``` {r boxplot, message = FALSE}
+library(ggplot2)
+ggplot(mtcars, aes(x = am, y = mpg)) +
+        geom_boxplot() +
+        labs(y = "Miles per Gallon (MPG)", x = "Transmission Type") +
+        ggtitle("MPG Distribution, Automatic vs. Manual")
+```
+
+\newpage
+And use ```ggpairs``` to create a matrix that shows the intersection of all variables.
+
+``` {r ggpairs, message = FALSE, cache = TRUE}
+library(GGally)
+ggpairs(mtcars)
+```
+
+\newpage
+### Appendix B
+
+Below, find the residual plots for the model used in the analysis.
+
+``` {r plot.resids}
+par(mfrow = c(2,2))
+plot(step.model)
+```
